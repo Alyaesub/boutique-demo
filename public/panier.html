@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panier — Boutique Démo</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <h1>Votre panier</h1>
+    <div id="contenu"></div>
+  </main>
+
+  <script src="/assets/app.js"></script>
+  <script>
+    let SESSION;
+    (async () => {
+      SESSION = await monterEntete('panier');
+      rendre();
+    })();
+
+    async function rendre() {
+      const produits = await api.get('/api/products');
+      const lignes = Panier.lire().map((l) => ({ ...l, p: produits.find((x) => x.id === l.produitId) })).filter((l) => l.p);
+      const zone = document.getElementById('contenu');
+
+      if (lignes.length === 0) { zone.innerHTML = '<p class="muted">Votre panier est vide. <a href="/">Retour à la boutique</a></p>'; return; }
+
+      const total = lignes.reduce((s, l) => s + l.p.prix * l.qte, 0);
+      zone.innerHTML = `
+        <table>
+          <thead><tr><th>Produit</th><th>Qté</th><th>Prix</th><th></th></tr></thead>
+          <tbody>
+            ${lignes.map((l) => `<tr>
+              <td>${l.p.emoji} ${l.p.nom}</td><td>${l.qte}</td><td>${euros(l.p.prix * l.qte)}</td>
+              <td><button class="btn ghost sm" data-del="${l.p.id}">Retirer</button></td></tr>`).join('')}
+          </tbody>
+        </table>
+        <div class="row between" style="margin-top:18px">
+          <div class="big-number">${euros(total)}</div>
+          <button class="btn" id="commander">Valider la commande</button>
+        </div>
+        <div id="msg"></div>`;
+
+      zone.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { Panier.retirer(Number(b.dataset.del)); rendre(); }));
+      document.getElementById('commander').addEventListener('click', commander);
+    }
+
+    async function commander() {
+      if (!SESSION.connecte) { location.href = '/connexion?next=/panier'; return; }
+      const r = await api.post('/api/orders', { panier: Panier.lire() });
+      const msg = document.getElementById('msg');
+      if (r.ok) {
+        Panier.vider();
+        msg.innerHTML = `<div class="note ok">✓ Commande <b>#${r.data.id}</b> enregistrée. <a href="/compte">Voir mes commandes</a></div>`;
+        setTimeout(() => (location.href = '/compte'), 1200);
+      } else {
+        msg.innerHTML = `<div class="note leak">${r.data.erreur || 'Erreur.'}</div>`;
+      }
+    }
+  </script>
+</body>
+</html>

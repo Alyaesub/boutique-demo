@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mes commandes — Boutique Démo</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <h1>Mes commandes</h1>
+    <p class="lead" id="bonjour"></p>
+    <div id="liste"></div>
+  </main>
+
+  <script src="/assets/app.js"></script>
+  <script>
+    (async () => {
+      const sess = await monterEntete('compte');
+      if (!sess.connecte) { location.href = '/connexion?next=/compte'; return; }
+      document.getElementById('bonjour').textContent = `Bonjour ${sess.client.nom}. Cliquez sur une commande pour voir le détail.`;
+
+      const cmds = await api.get('/api/orders');
+      if (!Array.isArray(cmds) || cmds.length === 0) {
+        document.getElementById('liste').innerHTML = '<p class="muted">Aucune commande pour le moment.</p>'; return;
+      }
+      document.getElementById('liste').innerHTML = `
+        <table>
+          <thead><tr><th>N° commande</th><th>Date</th><th>Articles</th><th>Total</th><th>Statut</th><th></th></tr></thead>
+          <tbody>
+            ${cmds.map((c) => `<tr>
+              <td><b>#${c.id}</b></td><td>${c.date}</td><td>${c.nbArticles}</td>
+              <td>${euros(c.total)}</td><td>${pillStatut(c.statut)}</td>
+              <td><a class="btn ghost sm" href="/compte/commande/${c.id}">Détail</a></td></tr>`).join('')}
+          </tbody>
+        </table>`;
+    })();
+  </script>
+</body>
+</html>

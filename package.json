@@ -1,0 +1,13 @@
+{
+  "name": "boutique-demo",
+  "version": "1.0.0",
+  "description": "Boutique e-commerce de démonstration VOLONTAIREMENT VULNÉRABLE — outil pédagogique pour démos de sécurité web. Données 100% fictives.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "private": true
+}

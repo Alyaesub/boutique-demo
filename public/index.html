@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boutique Démo</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <h1>Notre boutique</h1>
+    <p class="lead">Une sélection d’objets du quotidien. Ajoutez au panier, créez un compte, passez commande.</p>
+    <div class="grid" id="produits"></div>
+  </main>
+
+  <script src="/assets/app.js"></script>
+  <script>
+    (async () => {
+      await monterEntete('boutique');
+      const produits = await api.get('/api/products');
+      document.getElementById('produits').innerHTML = produits.map((p) => `
+        <div class="card product">
+          <div class="emoji">${p.emoji}</div>
+          <div class="nom">${p.nom}</div>
+          <div class="desc">${p.desc}</div>
+          <div class="prix">${euros(p.prix)}</div>
+          <button class="btn" data-id="${p.id}">Ajouter au panier</button>
+        </div>`).join('');
+
+      document.getElementById('produits').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-id]');
+        if (!b) return;
+        Panier.ajouter(Number(b.dataset.id));
+        b.textContent = '✓ Ajouté'; setTimeout(() => (b.textContent = 'Ajouter au panier'), 900);
+      });
+    })();
+  </script>
+</body>
+</html>

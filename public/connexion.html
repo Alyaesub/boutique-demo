@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion — Boutique Démo</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <h1>Mon compte</h1>
+    <div class="card form">
+      <div class="tabs">
+        <button id="tab-login" class="active">Connexion</button>
+        <button id="tab-register">Créer un compte</button>
+      </div>
+
+      <!-- Connexion -->
+      <div id="vue-login">
+        <label>Email</label><input id="l-email" value="lucas@demo.test">
+        <label>Mot de passe</label><input id="l-pwd" type="password" value="demo1234">
+        <div style="margin-top:16px"><button class="btn" id="btn-login">Se connecter</button></div>
+        <p class="muted" style="font-size:13px;margin-top:14px">Comptes de test : <b>lucas@demo.test</b>, marie@demo.test, thomas@demo.test, sophie@demo.test — mot de passe <b>demo1234</b>.</p>
+      </div>
+
+      <!-- Inscription -->
+      <div id="vue-register" style="display:none">
+        <label>Nom complet</label><input id="r-nom" placeholder="Prénom Nom">
+        <label>Email</label><input id="r-email" placeholder="vous@exemple.fr">
+        <label>Téléphone</label><input id="r-tel" placeholder="06 00 00 00 00">
+        <label>Adresse</label><input id="r-adr" placeholder="N° rue, code postal ville">
+        <label>Mot de passe</label><input id="r-pwd" type="password">
+        <div style="margin-top:16px"><button class="btn" id="btn-register">Créer mon compte</button></div>
+      </div>
+
+      <div id="msg"></div>
+    </div>
+  </main>
+
+  <script src="/assets/app.js"></script>
+  <script>
+    (async () => { await monterEntete('compte'); })();
+    const next = new URLSearchParams(location.search).get('next') || '/compte';
+
+    const tl = document.getElementById('tab-login'), tr = document.getElementById('tab-register');
+    tl.onclick = () => { tl.classList.add('active'); tr.classList.remove('active'); vueLogin.style.display=''; vueRegister.style.display='none'; };
+    tr.onclick = () => { tr.classList.add('active'); tl.classList.remove('active'); vueRegister.style.display=''; vueLogin.style.display='none'; };
+    const vueLogin = document.getElementById('vue-login'), vueRegister = document.getElementById('vue-register');
+
+    document.getElementById('btn-login').onclick = async () => {
+      const r = await api.post('/api/login', { email: lEmail.value, motdepasse: lPwd.value });
+      if (r.ok) location.href = next; else msg.innerHTML = `<div class="note leak">${r.data.erreur}</div>`;
+    };
+    document.getElementById('btn-register').onclick = async () => {
+      const r = await api.post('/api/register', { nom: rNom.value, email: rEmail.value, telephone: rTel.value, adresse: rAdr.value, motdepasse: rPwd.value });
+      if (r.ok) location.href = next; else msg.innerHTML = `<div class="note leak">${r.data.erreur}</div>`;
+    };
+    const lEmail=document.getElementById('l-email'), lPwd=document.getElementById('l-pwd'), msg=document.getElementById('msg');
+    const rNom=document.getElementById('r-nom'), rEmail=document.getElementById('r-email'), rTel=document.getElementById('r-tel'), rAdr=document.getElementById('r-adr'), rPwd=document.getElementById('r-pwd');
+  </script>
+</body>
+</html>

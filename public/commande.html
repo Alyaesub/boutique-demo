@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Détail commande — Boutique Démo</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <div class="row between">
+      <h1 style="margin:0">Commande <span id="titre-id"></span></h1>
+      <a class="btn ghost sm" href="/compte">← Mes commandes</a>
+    </div>
+
+    <!-- Navigation par id : sert à démontrer l'IDOR en un clic -->
+    <div class="row" style="margin:14px 0">
+      <button class="btn ghost sm" id="prec">◀ Commande n−1</button>
+      <button class="btn ghost sm" id="suiv">Commande n+1 ▶</button>
+      <span class="muted" style="font-size:13px">L’identifiant est dans l’URL. Essayez de le changer.</span>
+    </div>
+
+    <div id="zone"></div>
+  </main>
+
+  <script src="/assets/app.js"></script>
+  <script>
+    const ID = Number(location.pathname.split('/').pop());
+    document.getElementById('titre-id').textContent = '#' + ID;
+    document.getElementById('prec').onclick = () => location.href = '/compte/commande/' + (ID - 1);
+    document.getElementById('suiv').onclick = () => location.href = '/compte/commande/' + (ID + 1);
+
+    (async () => {
+      const sess = await monterEntete('compte');
+      if (!sess.connecte) { location.href = '/connexion?next=' + encodeURIComponent(location.pathname); return; }
+      charger();
+    })();
+
+    async function charger() {
+      const zone = document.getElementById('zone');
+      const r = await fetch('/api/orders/' + ID);
+      if (r.status === 403) {
+        zone.innerHTML = `<div class="note ok">🔒 <b>Accès refusé</b> — cette commande ne vous appartient pas.<br>
+          <span class="muted">C’est le comportement attendu : en <b>mode sécurisé</b>, le serveur vérifie le propriétaire de la commande.</span></div>`;
+        return;
+      }
+      if (!r.ok) { zone.innerHTML = `<div class="note info">Commande introuvable.</div>`; return; }
+      const c = await r.json();
+
+      // Bandeau selon que la commande m'appartient ou non (révèle l'IDOR)
+      const alerte = c.aMoi
+        ? ''
+        : `<div class="note leak">🚨 <b>Cette commande n’est PAS la vôtre.</b> Vous consultez pourtant le nom, l’adresse, le téléphone et l’email d’un autre client.
+             <span class="muted">C’est une faille de contrôle d’accès (IDOR) : le site vérifie que vous êtes connecté, mais pas que la commande vous appartient.</span></div>`;
+
+      const articles = c.articles.map((a) => `<tr><td>${a.nom}</td><td>${a.qte}</td><td>${euros(a.prix * a.qte)}</td></tr>`).join('');
+
+      // Actions sur le remboursement (uniquement sur SA propre commande)
+      let actions = '';
+      if (c.aMoi) {
+        if (c.statut !== 'livrée') {
+          actions = `<button class="btn sm" id="livrer">Marquer comme livrée</button>
+                     <span class="muted" style="font-size:13px">(raccourci de démo)</span>`;
+        } else if (c.remboursement === 'aucun') {
+          actions = `<button class="btn danger sm" id="rembourser">Demander un remboursement</button>`;
+        } else if (c.remboursement === 'remboursée') {
+          actions = `<div class="note leak" style="margin:0">💸 <b>Remboursé (${euros(c.total)})</b> — marchandise <b>non retournée</b>, mais vous l’avez gardée.
+            <span class="muted">Faille de logique métier : remboursement auto-approuvé sans contrôle du retour.</span></div>`;
+        } else if (c.remboursement === 'en attente de retour') {
+          actions = `<div class="note ok" style="margin:0">⏳ <b>Demande enregistrée</b> — aucun remboursement tant que le retour n’est pas constaté par le commerçant.
+            <span class="muted">C’est le comportement corrigé (mode sécurisé).</span></div>`;
+        }
+      }
+
+      zone.innerHTML = `
+        ${alerte}
+        <div class="card">
+          <div class="row between">
+            <h2 style="margin:0">Livraison</h2>
+            <div>${pillStatut(c.statut)} ${c.remboursement !== 'aucun' ? pillStatut(c.remboursement) : ''}</div>
+          </div>
+          <div style="margin-top:8px;line-height:1.8">
+            <b>${c.livraison.nom}</b><br>
+            📍 ${c.livraison.adresse}<br>
+            📞 ${c.livraison.telephone} &nbsp;·&nbsp; ✉️ ${c.livraison.email}
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h2>Articles</h2>
+          <table><thead><tr><th>Produit</th><th>Qté</th><th>Montant</th></tr></thead>
+            <tbody>${articles}</tbody></table>
+          <div class="row between" style="margin-top:14px">
+            <span class="muted">Commande du ${c.date}</span>
+            <span class="big-number" style="font-size:26px">${euros(c.total)}</span>
+          </div>
+          <div class="row" style="margin-top:14px">${actions}</div>
+        </div>`;
+
+      const bl = document.getElementById('livrer');
+      if (bl) bl.onclick = async () => { await api.post('/api/orders/' + ID + '/deliver'); charger(); };
+      const br = document.getElementById('rembourser');
+      if (br) br.onclick = async () => { await api.post('/api/orders/' + ID + '/refund'); charger(); };
+    }
+  </script>
+</body>
+</html>
